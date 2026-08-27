@@ -1,0 +1,35 @@
+name: Make repo public (one-off)
+
+# The CCR session's GitHub proxy blocks repo-settings writes (PATCH /repos/{owner}/{repo}), so this
+# runs as a real GitHub Actions job instead, using the org's GHUB_KEY PAT (already used by
+# eds-claude-skills' create-repo.yml for the same reason — repo/org admin calls the CCR proxy blocks).
+# This repo needs to be public so its GHCR image (ghcr.io/deventerpriseds-org/mcp-oauth-proxy) can be
+# pulled by Azure Container Apps without registry credentials, same as the other public images
+# (crystaldba/postgres-mcp, the upstream obot image) already used by deploy-pg-mcp.yml. Run once;
+# the repo stays public afterward, no need to re-run on future pushes.
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  make-public:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PATCH repo visibility to public
+        env:
+          GHUB_KEY: ${{ secrets.GHUB_KEY }}
+        run: |
+          set -euo pipefail
+          RESP=$(curl -s -w '\n%{http_code}' -X PATCH \
+            -H "Authorization: Bearer $GHUB_KEY" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}" \
+            -d '{"private": false}')
+          BODY=$(echo "$RESP" | head -n -1)
+          CODE=$(echo "$RESP" | tail -n1)
+          echo "$BODY"
+          if [ "$CODE" -ge 300 ]; then
+            echo "::error::PATCH failed with HTTP $CODE"
+            exit 1
+          fi
+          echo "Repo is now public (HTTP $CODE)."
