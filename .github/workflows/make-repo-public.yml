@@ -64,3 +64,14 @@ jobs:
           else
             echo "::warning::Package visibility PATCH failed with both tokens — a manual visibility change in the package's GitHub settings (Package settings -> Danger Zone -> Change visibility -> Public) is needed."
           fi
+
+      - name: Diagnose — can GHUB_KEY at least PULL the (possibly still-private) image?
+        env:
+          GHUB_KEY: ${{ secrets.GHUB_KEY }}
+        run: |
+          set -x
+          echo "$GHUB_KEY" | docker login ghcr.io -u x-access-token --password-stdin || true
+          docker pull ghcr.io/deventerpriseds-org/mcp-oauth-proxy:main || true
+          echo "--- anonymous pull check ---"
+          docker logout ghcr.io || true
+          docker pull ghcr.io/deventerpriseds-org/mcp-oauth-proxy:main || true
