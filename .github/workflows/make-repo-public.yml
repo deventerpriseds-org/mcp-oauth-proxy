@@ -14,6 +14,8 @@ on:
 jobs:
   make-public:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     steps:
       - name: PATCH repo visibility to public
         env:
@@ -39,19 +41,26 @@ jobs:
       # so ACA can pull ghcr.io/deventerpriseds-org/mcp-oauth-proxy without registry credentials.
       - name: PATCH package visibility to public
         env:
+          GH_TOKEN: ${{ github.token }}
           GHUB_KEY: ${{ secrets.GHUB_KEY }}
         run: |
           set -euo pipefail
-          RESP=$(curl -s -w '\n%{http_code}' -X PATCH \
-            -H "Authorization: Bearer $GHUB_KEY" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/orgs/deventerpriseds-org/packages/container/mcp-oauth-proxy" \
-            -d '{"visibility": "public"}')
-          BODY=$(echo "$RESP" | head -n -1)
-          CODE=$(echo "$RESP" | tail -n1)
-          echo "$BODY"
-          if [ "$CODE" -ge 300 ]; then
-            echo "::warning::Package visibility PATCH failed with HTTP $CODE — GHUB_KEY may lack packages scope. May need a manual visibility change in the package's GitHub settings."
-            exit 0
+          try_patch() {
+            local tok="$1" label="$2"
+            RESP=$(curl -s -w '\n%{http_code}' -X PATCH \
+              -H "Authorization: Bearer $tok" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/orgs/deventerpriseds-org/packages/container/mcp-oauth-proxy" \
+              -d '{"visibility": "public"}')
+            BODY=$(echo "$RESP" | head -n -1)
+            CODE=$(echo "$RESP" | tail -n1)
+            echo "[$label] HTTP $CODE: $BODY"
+            [ "$CODE" -lt 300 ]
+          }
+          if try_patch "$GH_TOKEN" "GITHUB_TOKEN (packages:write)"; then
+            echo "Package is now public via GITHUB_TOKEN."
+          elif try_patch "$GHUB_KEY" "GHUB_KEY"; then
+            echo "Package is now public via GHUB_KEY."
+          else
+            echo "::warning::Package visibility PATCH failed with both tokens — a manual visibility change in the package's GitHub settings (Package settings -> Danger Zone -> Change visibility -> Public) is needed."
           fi
-          echo "Package is now public (HTTP $CODE)."
