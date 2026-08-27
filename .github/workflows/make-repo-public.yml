@@ -33,3 +33,25 @@ jobs:
             exit 1
           fi
           echo "Repo is now public (HTTP $CODE)."
+
+      # A package already published while the repo was private keeps its own visibility flag —
+      # flipping the repo doesn't retroactively flip existing package versions. Patch it directly too
+      # so ACA can pull ghcr.io/deventerpriseds-org/mcp-oauth-proxy without registry credentials.
+      - name: PATCH package visibility to public
+        env:
+          GHUB_KEY: ${{ secrets.GHUB_KEY }}
+        run: |
+          set -euo pipefail
+          RESP=$(curl -s -w '\n%{http_code}' -X PATCH \
+            -H "Authorization: Bearer $GHUB_KEY" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/orgs/deventerpriseds-org/packages/container/mcp-oauth-proxy" \
+            -d '{"visibility": "public"}')
+          BODY=$(echo "$RESP" | head -n -1)
+          CODE=$(echo "$RESP" | tail -n1)
+          echo "$BODY"
+          if [ "$CODE" -ge 300 ]; then
+            echo "::warning::Package visibility PATCH failed with HTTP $CODE — GHUB_KEY may lack packages scope. May need a manual visibility change in the package's GitHub settings."
+            exit 0
+          fi
+          echo "Package is now public (HTTP $CODE)."
