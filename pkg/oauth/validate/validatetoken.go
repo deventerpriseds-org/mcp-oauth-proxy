@@ -12,6 +12,7 @@ import (
 
 	"github.com/obot-platform/mcp-oauth-proxy/pkg/encryption"
 	"github.com/obot-platform/mcp-oauth-proxy/pkg/handlerutils"
+	"github.com/obot-platform/mcp-oauth-proxy/pkg/oauth/token"
 	"github.com/obot-platform/mcp-oauth-proxy/pkg/providers"
 	"github.com/obot-platform/mcp-oauth-proxy/pkg/tokens"
 	"github.com/obot-platform/mcp-oauth-proxy/pkg/types"
@@ -195,8 +196,8 @@ func (p *TokenValidator) refreshAccessToken(w http.ResponseWriter, r *http.Reque
 		UserID:                tokenData.UserID,
 		GrantID:               tokenData.GrantID,
 		Scope:                 tokenData.Scope,
-		ExpiresAt:             time.Now().Add(time.Hour),           // 1 hour
-		RefreshTokenExpiresAt: time.Now().Add(30 * 24 * time.Hour), // 30 days
+		ExpiresAt:             time.Now().Add(token.AccessTokenLifetime), // EnterpriseDS fork: 30 days, was 1 hour
+		RefreshTokenExpiresAt: time.Now().Add(30 * 24 * time.Hour),       // 30 days
 		CreatedAt:             time.Now(),
 		Revoked:               false,
 	}
@@ -208,7 +209,7 @@ func (p *TokenValidator) refreshAccessToken(w http.ResponseWriter, r *http.Reque
 	// Determine if request is secure for cookie Secure flag
 	isSecure := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 
-	// Encrypt and set access token cookie (1 hour = 3600 seconds)
+	// Encrypt and set access token cookie (EnterpriseDS fork: matches AccessTokenLifetime, was 1 hour)
 	encryptedAccessToken, err := encryption.EncryptCookie(p.encryptionKey, newAccessToken)
 	if err != nil {
 		return "", fmt.Errorf("failed to encrypt access token: %w", err)
@@ -218,7 +219,7 @@ func (p *TokenValidator) refreshAccessToken(w http.ResponseWriter, r *http.Reque
 		Name:     p.accessTokenCookieName,
 		Value:    encryptedAccessToken,
 		Path:     "/",
-		MaxAge:   3600,
+		MaxAge:   int(token.AccessTokenLifetime.Seconds()),
 		HttpOnly: true,
 		Secure:   isSecure,
 		SameSite: http.SameSiteLaxMode,

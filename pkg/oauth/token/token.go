@@ -19,7 +19,7 @@ import (
 // and Claude's MCP OAuth client doesn't auto-refresh on expiry (only a fresh manual reconnect works),
 // so every connector prompted for re-auth roughly daily. Extending this to match the refresh token's
 // 30-day lifetime doesn't fix Claude's refresh bug, but it makes the symptom fire far less often.
-const accessTokenLifetime = 30 * 24 * time.Hour
+const AccessTokenLifetime = 30 * 24 * time.Hour
 
 type TokenStore interface {
 	GetClient(clientID string) (*types.ClientInfo, error)
@@ -226,7 +226,7 @@ func (p *Handler) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Re
 		UserID:       userID,
 		GrantID:      grantID,
 		Scope:        strings.Join(grant.Scope, " "),
-		ExpiresAt:    time.Now().Add(accessTokenLifetime),
+		ExpiresAt:    time.Now().Add(AccessTokenLifetime),
 		CreatedAt:    time.Now(),
 	}
 
@@ -247,7 +247,7 @@ func (p *Handler) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Re
 	response := types.TokenResponse{
 		AccessToken:  accessToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    int(accessTokenLifetime.Seconds()),
+		ExpiresIn:    int(AccessTokenLifetime.Seconds()),
 		RefreshToken: refreshToken,
 		Scope:        strings.Join(grant.Scope, " "),
 	}
@@ -322,7 +322,7 @@ func (p *Handler) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request
 		UserID:                tokenData.UserID,
 		GrantID:               tokenData.GrantID,
 		Scope:                 tokenData.Scope,
-		ExpiresAt:             time.Now().Add(accessTokenLifetime),
+		ExpiresAt:             time.Now().Add(AccessTokenLifetime),
 		RefreshTokenExpiresAt: refreshTokenExpiresAt,
 		CreatedAt:             time.Now(),
 	}
@@ -344,7 +344,7 @@ func (p *Handler) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request
 	response := types.TokenResponse{
 		AccessToken:  accessToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    int(accessTokenLifetime.Seconds()),
+		ExpiresIn:    int(AccessTokenLifetime.Seconds()),
 		RefreshToken: refreshToken,
 		Scope:        tokenData.Scope,
 	}

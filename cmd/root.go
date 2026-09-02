@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/gptscript-ai/cmd"
+	"github.com/obot-platform/mcp-oauth-proxy/pkg/oauth/token"
 	"github.com/obot-platform/mcp-oauth-proxy/pkg/proxy"
 	"github.com/obot-platform/mcp-oauth-proxy/pkg/types"
 	"github.com/spf13/cobra"
@@ -100,6 +101,7 @@ func (c *RootCmd) Run(cobraCmd *cobra.Command, args []string) error {
 	log.Printf("OAuth Provider: %s", c.OAuthAuthorizeURL)
 	log.Printf("MCP Server: %s", c.MCPServerURL)
 	log.Printf("Database: %s", c.getDatabaseType())
+	log.Printf("EnterpriseDS fork: access token lifetime = %s", token.AccessTokenLifetime)
 
 	return http.ListenAndServe(address, handler)
 }
