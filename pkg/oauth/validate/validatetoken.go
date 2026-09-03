@@ -197,7 +197,7 @@ func (p *TokenValidator) refreshAccessToken(w http.ResponseWriter, r *http.Reque
 		GrantID:               tokenData.GrantID,
 		Scope:                 tokenData.Scope,
 		ExpiresAt:             time.Now().Add(token.AccessTokenLifetime), // EnterpriseDS fork: 30 days, was 1 hour
-		RefreshTokenExpiresAt: time.Now().Add(30 * 24 * time.Hour),       // 30 days
+		RefreshTokenExpiresAt: time.Now().Add(token.RefreshTokenLifetime),
 		CreatedAt:             time.Now(),
 		Revoked:               false,
 	}

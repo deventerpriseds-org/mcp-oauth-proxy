@@ -21,6 +21,8 @@ import (
 // 30-day lifetime doesn't fix Claude's refresh bug, but it makes the symptom fire far less often.
 const AccessTokenLifetime = 30 * 24 * time.Hour
 
+const RefreshTokenLifetime = 30 * 24 * time.Hour
+
 type TokenStore interface {
 	GetClient(clientID string) (*types.ClientInfo, error)
 	StoreToken(token *types.TokenData) error
@@ -220,14 +222,15 @@ func (p *Handler) handleAuthorizationCodeGrant(w http.ResponseWriter, r *http.Re
 
 	// Store tokens in database
 	tokenData := &types.TokenData{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		ClientID:     clientID,
-		UserID:       userID,
-		GrantID:      grantID,
-		Scope:        strings.Join(grant.Scope, " "),
-		ExpiresAt:    time.Now().Add(AccessTokenLifetime),
-		CreatedAt:    time.Now(),
+		AccessToken:           accessToken,
+		RefreshToken:          refreshToken,
+		ClientID:              clientID,
+		UserID:                userID,
+		GrantID:               grantID,
+		Scope:                 strings.Join(grant.Scope, " "),
+		ExpiresAt:             time.Now().Add(AccessTokenLifetime),
+		RefreshTokenExpiresAt: time.Now().Add(RefreshTokenLifetime),
+		CreatedAt:             time.Now(),
 	}
 
 	if err := p.db.StoreToken(tokenData); err != nil {
@@ -312,7 +315,7 @@ func (p *Handler) handleRefreshTokenGrant(w http.ResponseWriter, r *http.Request
 	// Generate new refresh token
 	refreshTokenSecret := encryption.GenerateRandomString(32)
 	refreshToken = fmt.Sprintf("%s:%s:%s", tokenData.UserID, tokenData.GrantID, refreshTokenSecret)
-	refreshTokenExpiresAt := time.Now().Add(30 * 24 * time.Hour) // 30 days from now
+	refreshTokenExpiresAt := time.Now().Add(RefreshTokenLifetime)
 
 	// Store new token in database (replaces the old one)
 	newTokenData := &types.TokenData{
